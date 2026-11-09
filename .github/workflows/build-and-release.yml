@@ -18,10 +18,21 @@ jobs:
 
       - name: Package Extensions
         run: |
-          npm i -g icuewidget-cli
+          npm i -g icuewidget-cli@0.5.1
           python package-all.py
 
+      # Every run (including manual ones) keeps the packages as a downloadable build artifact.
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: widgets
+          path: dist/*.icuewidget
+          if-no-files-found: error
+
+      # Only version tags publish a release. Manual runs from a branch would otherwise
+      # create a release (and tag) named after the branch, e.g. "main".
       - name: Create release and upload files
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -29,4 +40,4 @@ jobs:
           # Create the release if it doesn't exist yet, then upload (overwriting same-named assets)
           gh release view "$TAG" >/dev/null 2>&1 || \
             gh release create "$TAG" --title "$TAG" --generate-notes
-          gh release upload "$TAG" dist/* --clobber
+          gh release upload "$TAG" dist/*.icuewidget --clobber
