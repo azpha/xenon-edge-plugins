@@ -1,0 +1,40 @@
+{
+  "en": {
+    "translation": {
+      "NFL Scoreboard": "NFL Scoreboard",
+      "Live Refresh": "Live Refresh",
+      "Idle Refresh": "Idle Refresh",
+      "Show Finished Games": "Show Finished Games",
+      "Show Team Logos": "Show Team Logos",
+      "Team Color Accents": "Team Color Accents",
+      "Widget Personalization": "Widget Personalization",
+      "Text Color": "Text Color",
+      "Accent Color": "Accent Color",
+      "Background Color": "Background Color",
+      "Background Image": "Background Image",
+      "Glass Blur": "Glass Blur",
+      "Background Transparency": "Background Transparency",
+      "Live Refresh sets how often scores update while a game is in progress. Idle Refresh is used when no game is live. Tap a game to open it on ESPN.": "Live Refresh sets how often scores update while a game is in progress. Idle Refresh is used when no game is live. Tap a game to open it on ESPN.",
+      "Loading scores...": "Loading scores...",
+      "Can't reach ESPN": "Can't reach ESPN",
+      "Check your connection, or allow site.api.espn.com in this widget's iCUE permissions. Retrying automatically.": "Check your connection, or allow site.api.espn.com in this widget's iCUE permissions. Retrying automatically.",
+      "No games this week": "No games this week",
+      "ESPN has no NFL games scheduled right now. Scores will appear when the next week is posted.": "ESPN has no NFL games scheduled right now. Scores will appear when the next week is posted.",
+      "All games are final": "All games are final",
+      "Turn on Show Finished Games to see this week's results.": "Turn on Show Finished Games to see this week's results.",
+      "WEEK": "WEEK",
+      "PRESEASON": "PRESEASON",
+      "PLAYOFFS": "PLAYOFFS",
+      "LIVE": "LIVE",
+      "OFFLINE": "OFFLINE",
+      "Updated": "Updated",
+      "FINAL": "FINAL",
+      "HALF": "HALF",
+      "END": "END",
+      "OT": "OT",
+      "PPD": "PPD",
+      "CANC": "CANC",
+      "DELAY": "DELAY"
+    }
+  }
+}
