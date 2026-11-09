@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>tr('Neon HUD')</title>
+  <link rel="icon" type="image/svg+xml" href="resources/icon.svg" />
+  <meta name="x-icue-widget-preview" content="resources/preview.png" />
+
+  <meta name="x-icue-property" content="stat1" data-label="tr('Sensor 1')" data-type="sensors-combobox" data-default="plugins.Sensorsdataprovider.getDefaultSensorIdBlock('temperature', 'cpu-temp')" />
+  <meta name="x-icue-property" content="stat2" data-label="tr('Sensor 2')" data-type="sensors-combobox" data-default="plugins.Sensorsdataprovider.getDefaultSensorIdBlock('temperature', 'gpu-temp')" />
+  <meta name="x-icue-property" content="stat3" data-label="tr('Sensor 3')" data-type="sensors-combobox" data-default="plugins.Sensorsdataprovider.getDefaultSensorIdBlock('load', 'package')" />
+  <meta name="x-icue-property" content="stat4" data-label="tr('Sensor 4')" data-type="sensors-combobox" data-default="plugins.Sensorsdataprovider.getDefaultSensorIdBlock('load', 'gpu-load')" />
+  <meta name="x-icue-property" content="warnTemp" data-label="tr('Temperature Warning')" data-type="slider" data-default="85" data-min="50" data-max="110" data-step="1" data-unit-label="String.fromCharCode(176) + 'C'" />
+
+  <meta name="x-icue-property" content="use24h" data-label="tr('24-Hour Clock')" data-type="switch" data-default="false" />
+  <meta name="x-icue-property" content="showSeconds" data-label="tr('Show Seconds')" data-type="switch" data-default="false" />
+
+  <meta name="x-icue-property" content="textColor" data-label="tr('Text Color')" data-type="color" data-default="'#ffe6e1'" />
+  <meta name="x-icue-property" content="accentColor" data-label="tr('Accent Color')" data-type="color" data-default="'#ff2a3f'" />
+  <meta name="x-icue-property" content="backgroundColor" data-label="tr('Background Color')" data-type="color" data-default="'#0c0305'" />
+  <meta name="x-icue-property" content="backgroundMedia" data-label="tr('Background Image')" data-type="media-selector" data-filters="['*.png','*.jpg','*.jpeg','*.webp']" />
+  <meta name="x-icue-property" content="glassBlur" data-label="tr('Glass Blur')" data-type="slider" data-default="0" data-min="0" data-max="30" data-step="1" />
+  <meta name="x-icue-property" content="transparency" data-label="tr('Background Transparency')" data-type="slider" data-default="100" data-min="0" data-max="100" data-step="1" data-unit-label="'%'" />
+  <meta name="x-icue-property" content="secondaryColor" data-label="tr('Secondary Color')" data-type="color" data-default="'#ff6a5c'" />
+  <meta name="x-icue-property" content="scanlines" data-label="tr('Scanlines')" data-type="switch" data-default="true" />
+
+  <script type="application/json" id="x-icue-groups">
+  [
+    {
+      "title": "tr('Sensors')",
+      "properties": ["stat1", "stat2", "stat3", "stat4", "warnTemp"],
+      "info": "tr('Pick any iCUE sensor for each gauge. Temperatures at or above the warning level, and loads at 95% or more, turn red.')"
+    },
+    {
+      "title": "tr('Clock')",
+      "properties": ["use24h", "showSeconds"]
+    },
+    {
+      "title": "tr('Widget Personalization')",
+      "properties": ["textColor", "accentColor", "backgroundColor", "backgroundMedia", "glassBlur", "transparency", "secondaryColor", "scanlines"]
+    }
+  ]
+  </script>
+</head>
+<body>
+  <style>
+    /* MediaViewer (inlined: iCUE blocks external scripts for user widgets) */
+    .position-container { position: absolute; transform-origin: top left; }
+    .scale-container { transform-origin: top left; }
+    .rotation-container { transform-origin: center center; }
+    .rotation-container img, .rotation-container video { display: block; object-fit: contain; }
+
+    :root {
+      --text-color: #ffe6e1;
+      --accent-color: #ff2a3f;
+      --cyan: #ff6a5c;          /* "secondary" color; name kept from the original theme */
+      --bg-color: #0c0305;
+      /* Status colors stay fixed so they read the same under any theme. */
+      --hot: #ffb347;
+      --danger: #5ef2ff;
+      --bg-opacity: 1;
+      --bg-blur: 0px;
+
+      /* One sizing baseline; everything below derives from it. */
+      --layout-unit: 1vmin;
+
+      --space-pad: calc(var(--layout-unit) * 3);
+      --space-gap: calc(var(--layout-unit) * 1.8);
+      --space-inner: calc(var(--layout-unit) * 2.6);
+      --cut: calc(var(--layout-unit) * 3.2);
+      --border: max(2px, calc(var(--layout-unit) * 0.3));
+
+      --font-tag: max(11px, calc(var(--layout-unit) * 2));
+      --font-label: max(12px, calc(var(--layout-unit) * 2.3));
+      --font-clock: calc(var(--layout-unit) * 17);
+      --font-clock-sub: calc(var(--layout-unit) * 5);
+      --font-date: calc(var(--layout-unit) * 3.4);
+      --font-notif: calc(var(--layout-unit) * 9);
+      --font-gauge: calc(var(--layout-unit) * 9);
+      --font-gauge-unit: calc(var(--layout-unit) * 3.6);
+      --font-fps: calc(var(--layout-unit) * 17);
+      --font-title: calc(var(--layout-unit) * 4.6);
+      --font-artist: calc(var(--layout-unit) * 3.2);
+      --font-state: calc(var(--layout-unit) * 4);
+
+      --panel-fill: color-mix(in srgb, var(--bg-color) 95%, var(--cyan));
+      --panel-edge: color-mix(in srgb, var(--cyan) 45%, transparent);
+      --dim-cyan: color-mix(in srgb, var(--cyan) 14%, transparent);
+    }
+
+    html { overflow: hidden; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 100vw;
+      height: 100vh;
+      background: transparent;
+      font-family: Bahnschrift, "Segoe UI", Arial, sans-serif;
+      font-stretch: semi-condensed;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .widget-root { position: relative; width: 100%; height: 100%; overflow: hidden; color: var(--text-color); }
+    .widget-background { position: absolute; inset: 0; z-index: 0; overflow: hidden; opacity: var(--bg-opacity); transition: opacity 0.2s ease; }
+    .main-glass { position: absolute; inset: 0; background-color: var(--bg-color); }
+    #media-background { width: 100%; height: 100%; position: relative; filter: blur(var(--bg-blur)); }
+
+    .scanlines {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 4px);
+    }
+    .no-scanlines .scanlines { display: none; }
+
+    .main-content {
+      position: relative;
+      z-index: 2;
+      height: 100%;
+      padding: var(--space-pad);
+      display: flex;
+      gap: var(--space-gap);
+    }
+
+    /* ---- Panels: clipped-corner frame drawn as edge color + inset fill ---- */
+    .panel {
+      position: relative;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      padding: var(--space-inner);
+      gap: calc(var(--layout-unit) * 1.6);
+      clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+      background: var(--panel-edge);
+    }
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: var(--border);
+      z-index: -1;
+      clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+      background: var(--panel-fill);
+    }
+    .panel > * { position: relative; }
+    .panel { isolation: isolate; }
+
+    .panel-clock { flex: 0 0 17%; }
+    .panel-stats { flex: 1 1 0; }
+    .panel-fps { flex: 0 0 18%; }
+    .panel-music { flex: 0 0 28%; }
+
+    .tag {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1em;
+      font-size: var(--font-tag);
+      letter-spacing: 0.22em;
+      font-weight: 700;
+      color: var(--accent-color);
+      white-space: nowrap;
+    }
+    .tag .label { display: flex; align-items: center; gap: 0.7em; }
+    .tag .label::before {
+      content: "";
+      width: 0.7em;
+      height: 0.7em;
+      background: var(--accent-color);
+      clip-path: polygon(0 0, 100% 0, 0 100%);
+    }
+    .tag .code { color: var(--cyan); opacity: 0.6; letter-spacing: 0.12em; }
+    .demo-tag {
+      color: var(--bg-color);
+      background: var(--accent-color);
+      padding: 0.15em 0.6em;
+      letter-spacing: 0.12em;
+    }
+
+    .num { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; line-height: 1; }
+
+    /* ---- Clock ---- */
+    .clock-body { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: calc(var(--layout-unit) * 1.4); }
+    .clock-time { font-size: var(--font-clock); color: var(--text-color); letter-spacing: 0.02em; display: flex; align-items: flex-start; }
+    .clock-time .sub { font-size: var(--font-clock-sub); color: var(--cyan); margin-left: 0.3em; margin-top: 0.35em; display: flex; flex-direction: column; gap: 0.15em; line-height: 1; }
+    .clock-date { font-size: var(--font-date); letter-spacing: 0.18em; opacity: 0.75; text-transform: uppercase; }
+    .divider { height: var(--border); background: linear-gradient(90deg, var(--cyan), transparent); opacity: 0.5; }
+    .notif { display: flex; align-items: center; gap: calc(var(--layout-unit) * 2); }
+    .notif-count { font-size: var(--font-notif); color: var(--accent-color); }
+    .notif-label { font-size: var(--font-label); letter-spacing: 0.18em; opacity: 0.7; line-height: 1.3; }
+    .notif.is-zero .notif-count { color: var(--text-color); opacity: 0.35; }
+
+    /* ---- Gauges ---- */
+    .gauges { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: var(--space-inner); }
+    .gauge { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: space-evenly; gap: calc(var(--layout-unit) * 0.8); --g-color: var(--cyan); }
+    .gauge.is-hot { --g-color: var(--hot); }
+    .gauge.is-warn { --g-color: var(--danger); }
+    .gauge-head { display: flex; gap: 0.8em; align-items: baseline; font-size: var(--font-label); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+    .gauge-idx { color: var(--g-color); font-weight: 700; }
+    .gauge-name { overflow: hidden; text-overflow: ellipsis; opacity: 0.85; }
+    .gauge-value { font-size: var(--font-gauge); color: var(--text-color); display: flex; align-items: baseline; gap: 0.12em; }
+    .gauge.is-warn .gauge-value { color: var(--danger); text-shadow: 0 0 calc(var(--layout-unit) * 2) color-mix(in srgb, var(--danger) 60%, transparent); }
+    .gauge-unit { font-size: var(--font-gauge-unit); color: var(--g-color); font-weight: 700; }
+    .gauge-bar { height: calc(var(--layout-unit) * 4.2); display: flex; gap: calc(var(--layout-unit) * 0.45); padding: 0 calc(var(--layout-unit) * 0.8); }
+    .seg { flex: 1 1 0; transform: skewX(-22deg); background: var(--dim-cyan); transition: background-color 0.35s ease; }
+    .seg.on { background: var(--g-color); }
+    .gauge-scale { display: flex; justify-content: space-between; gap: 1em; font-size: var(--font-tag); letter-spacing: 0.12em; opacity: 0.5; white-space: nowrap; }
+    .gauge-device { overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
+    .gauge.is-offline .gauge-value { opacity: 0.4; }
+    .gauge.is-offline .gauge-unit { display: none; }
+    .gauge-msg { font-size: var(--font-label); color: var(--danger); letter-spacing: 0.08em; display: none; }
+    .gauge.is-offline .gauge-msg { display: block; }
+    .gauge.is-offline .gauge-scale { display: none; }
+
+    /* ---- FPS ---- */
+    .fps-body { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; gap: calc(var(--layout-unit) * 1.4); }
+    .fps-value { display: flex; align-items: baseline; gap: 0.25em; }
+    .fps-num { font-size: var(--font-fps); color: var(--accent-color); }
+    .fps-unit { font-size: var(--font-state); color: var(--cyan); font-weight: 700; letter-spacing: 0.15em; }
+    .fps-graph { flex: 1 1 0; min-height: 0; width: 100%; border-left: var(--border) solid var(--dim-cyan); border-bottom: var(--border) solid var(--dim-cyan); }
+    .fps-graph path { fill: none; stroke: var(--cyan); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+    .fps-graph .area { fill: color-mix(in srgb, var(--cyan) 12%, transparent); stroke: none; }
+    .fps-proc { font-size: var(--font-label); letter-spacing: 0.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
+    .fps-proc .k { color: var(--accent-color); font-weight: 700; margin-right: 0.6em; }
+    .fps-body.no-data .fps-num { color: var(--text-color); opacity: 0.3; }
+    .fps-hint { font-size: var(--font-label); opacity: 0.55; letter-spacing: 0.06em; display: none; }
+    .fps-body.no-data .fps-hint { display: block; }
+
+    /* ---- Music ---- */
+    .music-top { flex: 1 1 0; min-height: 0; display: flex; gap: var(--space-inner); }
+    .art {
+      position: relative;
+      flex: 0 0 auto;
+      height: 100%;
+      max-width: 48%;
+      aspect-ratio: 1 / 1;
+      clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%);
+      background:
+        repeating-linear-gradient(-45deg, var(--dim-cyan) 0 calc(var(--layout-unit) * 0.6), transparent calc(var(--layout-unit) * 0.6) calc(var(--layout-unit) * 2.2)),
+        color-mix(in srgb, var(--bg-color) 80%, var(--cyan));
+    }
+    .art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .track { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: calc(var(--layout-unit) * 1.2); }
+    .track-status { font-size: var(--font-tag); letter-spacing: 0.22em; font-weight: 700; color: var(--cyan); display: flex; align-items: center; gap: 0.6em; }
+    .track-status::before { content: ""; width: 0.75em; height: 0.75em; background: currentColor; }
+    .is-playing .track-status { color: var(--accent-color); }
+    .is-playing .track-status::before { clip-path: polygon(0 0, 100% 50%, 0 100%); }
+    .track-title {
+      font-size: var(--font-title);
+      font-weight: 700;
+      line-height: 1.1;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+    }
+    .track-artist { font-size: var(--font-artist); color: var(--cyan); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .track-album { font-size: var(--font-label); opacity: 0.55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.04em; }
+    .no-media .track-title { color: var(--text-color); opacity: 0.35; letter-spacing: 0.1em; }
+    .no-media .track-artist { color: var(--text-color); opacity: 0.55; font-size: var(--font-label); }
+
+    .controls { flex: 0 0 calc(var(--layout-unit) * 15); display: flex; gap: var(--space-gap); }
+    .ctrl {
+      flex: 1 1 0;
+      border: 0;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      color: var(--cyan);
+      background: var(--dim-cyan);
+      clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.12s ease, transform 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ctrl svg { height: 42%; width: auto; fill: currentColor; }
+    .ctrl.primary { flex: 1.4 1 0; color: var(--bg-color); background: var(--accent-color); }
+    .ctrl:active { transform: scale(0.96); background: color-mix(in srgb, var(--cyan) 40%, transparent); }
+    .ctrl.primary:active { background: color-mix(in srgb, var(--accent-color) 70%, white); }
+    .ctrl .icon-pause { display: none; }
+    .is-playing .ctrl .icon-play { display: none; }
+    .is-playing .ctrl .icon-pause { display: block; }
+
+    /* ---- Glitch (one-shot, on events only) ---- */
+    @keyframes glitch {
+      0%   { clip-path: inset(0 0 0 0); transform: translate(0); text-shadow: none; }
+      15%  { clip-path: inset(12% 0 58% 0); transform: translate(-0.06em, 0); text-shadow: 0.05em 0 var(--danger), -0.05em 0 var(--cyan); }
+      30%  { clip-path: inset(55% 0 18% 0); transform: translate(0.06em, 0); }
+      45%  { clip-path: inset(30% 0 42% 0); transform: translate(-0.03em, 0); text-shadow: -0.04em 0 var(--danger), 0.04em 0 var(--cyan); }
+      60%  { clip-path: inset(0 0 0 0); transform: translate(0.02em, 0); }
+      100% { clip-path: inset(0 0 0 0); transform: translate(0); text-shadow: none; }
+    }
+    .glitch { animation: glitch 0.45s steps(1, end) 1; }
+
+    /* ---- Narrower slots (not a design target): hide panels instead of shrinking ---- */
+    @media (max-width: 2100px) { .panel-fps { display: none; } .panel-music { flex-basis: 34%; } .panel-clock { flex-basis: 22%; } }
+    @media (max-width: 1500px) { .panel-clock { display: none; } .panel-music { flex-basis: 45%; } }
+    @media (max-width: 1000px) { .panel-music { display: none; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+
+  <div class="widget-root" id="root">
+    <div class="widget-background" aria-hidden="true">
+      <div class="main-glass"></div>
+      <div id="media-background"></div>
+    </div>
+
+    <div class="main-content">
+      <section class="panel panel-clock" aria-label="Clock and notifications">
+        <div class="tag"><span class="label" data-s="CHRONO">CHRONO</span><span class="code" id="demo-slot">00.1</span></div>
+        <div class="clock-body">
+          <div class="clock-time num"><span id="clock-hm">--:--</span><span class="sub"><span id="clock-sec"></span><span id="clock-ampm"></span></span></div>
+          <div class="clock-date" id="clock-date"></div>
+          <div class="divider"></div>
+          <div class="notif is-zero" id="notif">
+            <span class="notif-count num" id="notif-count">0</span>
+            <span class="notif-label"><span data-s="NOTIFICATIONS">NOTIFICATIONS</span><br /><span id="notif-state" data-s="ALL CLEAR">ALL CLEAR</span></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel panel-stats" aria-label="System sensors">
+        <div class="tag"><span class="label" data-s="SYS.MONITOR">SYS.MONITOR</span><span class="code">00.2</span></div>
+        <div class="gauges" id="gauges"></div>
+      </section>
+
+      <section class="panel panel-fps" aria-label="Frame rate">
+        <div class="tag"><span class="label" data-s="FRAME.RATE">FRAME.RATE</span><span class="code">00.3</span></div>
+        <div class="fps-body no-data" id="fps-body">
+          <div class="fps-value"><span class="fps-num num" id="fps-num">--</span><span class="fps-unit">FPS</span></div>
+          <svg class="fps-graph" id="fps-graph" viewBox="0 0 59 100" preserveAspectRatio="none" aria-hidden="true">
+            <path class="area" id="fps-area" d=""></path>
+            <path id="fps-line" d=""></path>
+          </svg>
+          <div class="fps-hint" id="fps-hint" data-s="No FPS data for this app">No FPS data for this app</div>
+          <div class="fps-proc"><span class="k" data-s="PROC">PROC</span><span id="fps-proc">--</span></div>
+        </div>
+      </section>
+
+      <section class="panel panel-music no-media" id="music" aria-label="Music player">
+        <div class="tag"><span class="label" data-s="AUDIO.LINK">AUDIO.LINK</span><span class="code">00.4</span></div>
+        <div class="music-top">
+          <div class="art" id="art"></div>
+          <div class="track">
+            <div class="track-status" id="track-status">STANDBY</div>
+            <div class="track-title" id="track-title">NO SIGNAL</div>
+            <div class="track-artist" id="track-artist">Start playback in any media app</div>
+            <div class="track-album" id="track-album"></div>
+          </div>
+        </div>
+        <div class="controls">
+          <button class="ctrl" id="btn-prev" type="button" aria-label="Previous track">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h3v16H5zM20 4v16L9 12z" /></svg>
+          </button>
+          <button class="ctrl primary" id="btn-play" type="button" aria-label="Play or pause">
+            <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3v18l15-9z" /></svg>
+            <svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h5v18H5zM14 3h5v18h-5z" /></svg>
+          </button>
+          <button class="ctrl" id="btn-next" type="button" aria-label="Next track">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h3v16h-3zM4 4v16l11-8z" /></svg>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div class="scanlines" aria-hidden="true"></div>
+  </div>
+
+  <script>
+    class MediaViewer {
+      constructor(options = {}) {
+        this.container = options.container;
+        this.onMediaLoaded = options.onMediaLoaded || (() => {});
+        this.onMediaError = options.onMediaError || (() => {});
+        this.debug = options.debug || false;
+        this.positionContainer = null; this.scaleContainer = null; this.rotationContainer = null;
+        this.mediaElement = null; this.currentMediaPath = null;
+        this.supportedImageFormats = ["jpg","jpeg","png","gif","bmp","webp","svg","ico"];
+        this.supportedVideoFormats = ["mp4","webm","ogg","mov","avi","mkv"];
+        if (!this.container) throw new Error("MediaViewer: container is required");
+      }
+      getFileExtension(p) { return p.split(".").pop().toLowerCase(); }
+      isImageFile(e) { return this.supportedImageFormats.includes(e); }
+      isVideoFile(e) { return this.supportedVideoFormats.includes(e); }
+      log(...a) { if (this.debug) console.log("[MediaViewer]", ...a); }
+      warn(...a) { if (this.debug) console.warn("[MediaViewer]", ...a); }
+      error(...a) { console.error("[MediaViewer]", ...a); }
+      createImageElement(filePath) {
+        const img = document.createElement("img");
+        img.src = filePath;
+        img.onerror = () => { this.error("Failed to load image:", filePath); this.onMediaError(new Error("Failed to load image: " + filePath)); };
+        img.onload  = () => { this.log("Image loaded:", filePath); this.onMediaLoaded(img); };
+        return img;
+      }
+      createVideoElement(filePath) {
+        const video = document.createElement("video");
+        video.controls = false; video.autoplay = true; video.loop = true; video.muted = true; video.playsInline = true;
+        video.addEventListener("loadeddata", () => {
+          video.play().then(() => { this.onMediaLoaded(video); }).catch(e => { this.error("Error playing video:", e); this.onMediaError(e); });
+        });
+        video.addEventListener("error", e => { this.error("Video error:", e); this.onMediaError(new Error("Video error: " + (video.error?.message || "Unknown"))); });
+        video.src = filePath;
+        return video;
+      }
+      createMediaElement(filePath) {
+        const ext = this.getFileExtension(filePath);
+        if (this.isImageFile(ext)) return this.createImageElement(filePath);
+        if (this.isVideoFile(ext)) return this.createVideoElement(filePath);
+        this.error("Unsupported format:", ext); this.onMediaError(new Error("Unsupported format: " + ext)); return null;
+      }
+      createContainers() {
+        this.positionContainer = document.createElement("div"); this.positionContainer.className = "position-container";
+        this.scaleContainer    = document.createElement("div"); this.scaleContainer.className    = "scale-container";
+        this.rotationContainer = document.createElement("div"); this.rotationContainer.className = "rotation-container";
+        this.rotationContainer.appendChild(this.mediaElement);
+        this.scaleContainer.appendChild(this.rotationContainer);
+        this.positionContainer.appendChild(this.scaleContainer);
+        return this.positionContainer;
+      }
+      applyTransform(params = {}) {
+        if (!this.positionContainer) return;
+        const baseWidth = params.baseWidth || 100; const baseHeight = params.baseHeight || 100;
+        const scaleValue = params.scale !== undefined ? params.scale : 1;
+        const posX = params.positionX || 0; const posY = params.positionY || 0; const rotation = params.angle || 0;
+        const minScale = Math.min(this.container.clientWidth / baseWidth, this.container.clientHeight / baseHeight);
+        this.positionContainer.style.transform = `translate(${posX * minScale}px, ${posY * minScale}px)`;
+        this.scaleContainer.style.transform    = `scale(${scaleValue * minScale})`;
+        this.rotationContainer.style.transform = `rotate(${rotation}deg)`;
+      }
+      loadMedia(params = {}) {
+        const filePath = params.path; if (!filePath) { this.clear(); return; }
+        const decoded = decodeURIComponent(filePath);
+        if (this.currentMediaPath === decoded) { this.applyTransform(params); return; }
+        this.clear();
+        this.mediaElement = this.createMediaElement(decoded); if (!this.mediaElement) return;
+        this.container.appendChild(this.createContainers());
+        this.container.style.visibility = "visible";
+        this.applyTransform(params); this.currentMediaPath = decoded;
+      }
+      clear() {
+        this.container.innerHTML = ""; this.container.style.visibility = "hidden";
+        this.positionContainer = this.scaleContainer = this.rotationContainer = this.mediaElement = this.currentMediaPath = null;
+      }
+      destroy() { this.clear(); this.container = this.onMediaLoaded = this.onMediaError = null; }
+    }
+  </script>
+
+  <script>
+    // iCUE + plugin bindings: bare assignments are intentional (see lifecycle notes).
+    icueEvents = {
+      'onDataUpdated': onIcueDataUpdated,
+      'onICUEInitialized': onIcueInitialized
+    };
+    pluginSensorsdataproviderEvents = { 'onInitialized': function () { initSensors(); } };
+    pluginMediadataproviderEvents = { 'onInitialized': function () { initMedia(); } };
+    pluginFpsdataproviderEvents = { 'onInitialized': function () { initFps(); } };
+    pluginNotificationsproviderEvents = { 'onInitialized': function () { initNotifications(); } };
+
+    // ---- Strings (translated through tr() when available) ---------------------
+    const S = {
+      'CHRONO': 'CHRONO', 'SYS.MONITOR': 'SYS.MONITOR', 'FRAME.RATE': 'FRAME.RATE', 'AUDIO.LINK': 'AUDIO.LINK',
+      'NOTIFICATIONS': 'NOTIFICATIONS', 'ALL CLEAR': 'ALL CLEAR', 'NO SIGNAL': 'NO SIGNAL', 'NO SENSOR': 'NO SENSOR',
+      'Pick a sensor in widget settings': 'Pick a sensor in widget settings', 'Sensor offline': 'Sensor offline',
+      'Start playback in any media app': 'Start playback in any media app',
+      'PLAYING': 'PLAYING', 'PAUSED': 'PAUSED', 'STANDBY': 'STANDBY',
+      'No FPS data for this app': 'No FPS data for this app', 'PROC': 'PROC', 'DEMO DATA': 'DEMO DATA'
+    };
+
+    async function loadTranslations() {
+      if (typeof tr !== 'function') return;
+      await Promise.all(Object.keys(S).map(async function (key) {
+        try { const v = await tr(key); if (typeof v === 'string' && v) S[key] = v; } catch (e) {}
+      }));
+      document.querySelectorAll('[data-s]').forEach(function (node) {
+        const key = node.getAttribute('data-s');
+        if (S[key]) node.textContent = S[key];
+      });
+      renderMedia(); renderNotifications(); slots.forEach(renderSlot); renderFps();
+    }
+
+    // ---- iCUE property helpers ------------------------------------------------
+    function getIcueProperty(name) {
+      if (typeof window !== 'undefined' && Object.prototype.hasOwnProperty.call(window, name)) {
+        const value = window[name];
+        if (value !== undefined && value !== null && value !== '') return value;
+      }
+      try {
+        const value = Function('return typeof ' + name + ' !== "undefined" ? ' + name + ' : undefined')();
+        if (value !== undefined && value !== null && value !== '') return value;
+      } catch (e) {}
+      return undefined;
+    }
+    function clampRange(v, min, max, d) { v = Number(v); if (!Number.isFinite(v)) return d; return Math.max(min, Math.min(max, v)); }
+    function boolProp(name, d) {
+      const v = getIcueProperty(name);
+      if (v === undefined) return d;
+      if (typeof v === 'string') return v.toLowerCase() === 'true';
+      return Boolean(v);
+    }
+    function colorProp(name, d) { const v = getIcueProperty(name); return (typeof v === 'string' && v) ? v : d; }
+    function localeTag() {
+      try { if (typeof iCUE !== 'undefined' && iCUE.iCUELanguage) return String(iCUE.iCUELanguage).replace('_', '-'); } catch (e) {}
+      return undefined;
+    }
+    function insideIcue() { return typeof iCUE_initialized !== 'undefined' && Boolean(iCUE_initialized); }
+    function pluginFlag(name) {
+      try { return Function('return typeof ' + name + ' !== "undefined" && Boolean(' + name + ')')(); } catch (e) { return false; }
+    }
+    function plugin(name) { return (window.plugins && window.plugins[name]) || null; }
+
+    // Generic requestId/asyncResponse helper for the Qt plugins (no wrapper files needed).
+    function makeRequester(p) {
+      let next = 1;
+      const pending = new Map();
+      if (p && p.asyncResponse && p.asyncResponse.connect) {
+        p.asyncResponse.connect(function (id, value) {
+          const entry = pending.get(id);
+          if (!entry) return;
+          pending.delete(id);
+          clearTimeout(entry.timer);
+          entry.resolve(value);
+        });
+      }
+      return function request(method) {
+        const args = Array.prototype.slice.call(arguments, 1);
+        return new Promise(function (resolve, reject) {
+          const id = next++;
+          const timer = setTimeout(function () { pending.delete(id); reject(new Error(method + ' timed out')); }, 5000);
+          pending.set(id, { resolve: resolve, timer: timer });
+          try { p[method].apply(p, [id].concat(args)); }
+          catch (e) { clearTimeout(timer); pending.delete(id); reject(e); }
+        });
+      };
+    }
+
+    function glitch(node) {
+      if (!node) return;
+      node.classList.remove('glitch');
+      void node.offsetWidth;  // restart the one-shot animation
+      node.classList.add('glitch');
+    }
+
+    // ---- Styles + background --------------------------------------------------
+    function resolveMediaPath(value) {
+      if (!value) return '';
+      if (typeof value === 'string') return value;
+      if (value.pathToAsset) return value.pathToAsset;
+      if (value.path) return value.path;
+      if (value.value) return value.value;
+      return '';
+    }
+    function normalizeMediaConfig(rawMedia) {
+      const mediaPath = resolveMediaPath(rawMedia);
+      if (!mediaPath) return null;
+      const base = (rawMedia && typeof rawMedia === 'object') ? rawMedia : {};
+      return {
+        path: base.pathToAsset || mediaPath,
+        baseWidth: Number(base.baseWidth) || Number(base.baseSizeX) || 0,
+        baseHeight: Number(base.baseHeight) || Number(base.baseSizeY) || 0,
+        scale: Number.isFinite(Number(base.scale)) ? Number(base.scale) : 1,
+        positionX: Number(base.positionX) || 0,
+        positionY: Number(base.positionY) || 0,
+        angle: Number(base.angle) || 0
+      };
+    }
+    function createMediaBackgroundComponent(container) {
+      if (!container) return { clear: function () {}, loadMedia: function () {} };
+      if (typeof MediaViewer === 'function') {
+        const viewer = new MediaViewer({ container: container, onMediaLoaded: function () {}, onMediaError: function (e) { console.error('Media error:', e); } });
+        return { clear: function () { viewer.clear(); }, loadMedia: function (config) { viewer.loadMedia(config); } };
+      }
+      return {
+        clear: function () { container.style.backgroundImage = ''; },
+        loadMedia: function (config) {
+          const p = (config && config.path) ? config.path : resolveMediaPath(config);
+          if (!p) { container.style.backgroundImage = ''; return; }
+          container.style.backgroundImage = "url('" + String(p).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "')";
+          container.style.backgroundRepeat = 'no-repeat';
+          container.style.backgroundSize = 'cover';
+          container.style.backgroundPosition = 'center';
+          container.style.visibility = 'visible';
+        }
+      };
+    }
+    const mediaBackground = createMediaBackgroundComponent(document.getElementById('media-background'));
+
+    function applyStyles() {
+      const root = document.documentElement;
+      root.style.setProperty('--bg-opacity', clampRange(getIcueProperty('transparency'), 0, 100, 100) / 100);
+      root.style.setProperty('--text-color', colorProp('textColor', '#ffe6e1'));
+      root.style.setProperty('--accent-color', colorProp('accentColor', '#ff2a3f'));
+      root.style.setProperty('--bg-color', colorProp('backgroundColor', '#0c0305'));
+      root.style.setProperty('--cyan', colorProp('secondaryColor', '#ff6a5c'));
+      root.style.setProperty('--bg-blur', clampRange(getIcueProperty('glassBlur'), 0, 30, 0) + 'px');
+      const mediaConfig = normalizeMediaConfig(getIcueProperty('backgroundMedia'));
+      if (mediaConfig) mediaBackground.loadMedia(mediaConfig); else mediaBackground.clear();
+      document.getElementById('root').classList.toggle('no-scanlines', !boolProp('scanlines', true));
+    }
+
+    // ---- Clock --------------------------------------------------------------
+    const clockEls = { hm: document.getElementById('clock-hm'), sec: document.getElementById('clock-sec'), ampm: document.getElementById('clock-ampm'), date: document.getElementById('clock-date') };
+    let clockTimer = null;
+    function pad2(n) { return n < 10 ? '0' + n : String(n); }
+    function renderClock() {
+      const now = new Date();
+      const use24 = boolProp('use24h', false);
+      const showSec = boolProp('showSeconds', false);
+      let h = now.getHours();
+      let ampm = '';
+      if (!use24) { ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; }
+      clockEls.hm.textContent = (use24 ? pad2(h) : String(h)) + ':' + pad2(now.getMinutes());
+      clockEls.sec.textContent = showSec ? pad2(now.getSeconds()) : '';
+      clockEls.ampm.textContent = ampm;
+      clockEls.date.textContent = now.toLocaleDateString(localeTag(), { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }).replace(/,/g, '');
+    }
+    function scheduleClock() {
+      if (clockTimer) clearTimeout(clockTimer);
+      renderClock();
+      const now = new Date();
+      const delay = boolProp('showSeconds', false) ? 1000 - now.getMilliseconds() : (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+      clockTimer = setTimeout(scheduleClock, delay + 20);
+    }
+
+    // ---- Notifications ------------------------------------------------------
+    let notifCount = 0;
+    let notifReady = false;
+    function renderNotifications() {
+      document.getElementById('notif-count').textContent = notifReady ? String(notifCount) : '--';
+      document.getElementById('notif').classList.toggle('is-zero', !notifCount);
+      const state = document.getElementById('notif-state');
+      state.textContent = !notifReady ? S['NO SIGNAL'] : (notifCount ? '' : S['ALL CLEAR']);
+    }
+    function setNotifications(n) {
+      n = Math.max(0, parseInt(n, 10) || 0);
+      const rose = notifReady && n > notifCount;
+      notifCount = n;
+      notifReady = true;
+      renderNotifications();
+      if (rose) glitch(document.getElementById('notif-count'));
+    }
+    function readNotificationCount(p, request) {
+      // Docs list getNotificationCount() without a requestId; support both a direct return
+      // value and the asyncResponse pattern the other providers use.
+      try {
+        const direct = p.getNotificationCount();
+        if (typeof direct === 'number') return Promise.resolve(direct);
+      } catch (e) {}
+      return request('getNotificationCount');
+    }
+    function initNotifications() {
+      if (notifReady || demoMode) return;
+      const p = plugin('Notificationsprovider');
+      if (!p) return;
+      const request = makeRequester(p);
+      const refresh = function () { readNotificationCount(p, request).then(setNotifications).catch(function (e) { console.warn('Notifications unavailable', e); }); };
+      if (p.notificationCountChanged && p.notificationCountChanged.connect) p.notificationCountChanged.connect(refresh);
+      refresh();
+    }
+
+    // ---- Sensor gauges ------------------------------------------------------
+    const SEGMENTS = 24;
+    const gaugesEl = document.getElementById('gauges');
+    const slots = ['stat1', 'stat2', 'stat3', 'stat4'].map(function (key, i) {
+      const root = document.createElement('div');
+      root.className = 'gauge is-offline';
+      root.innerHTML =
+        '<div class="gauge-head"><span class="gauge-idx"></span><span class="gauge-name"></span></div>' +
+        '<div class="gauge-value"><span class="num"></span><span class="gauge-unit"></span></div>' +
+        '<div class="gauge-msg"></div>' +
+        '<div class="gauge-bar"></div>' +
+        '<div class="gauge-scale"><span class="lo">0</span><span class="gauge-device"></span><span class="hi"></span></div>';
+      root.querySelector('.gauge-idx').textContent = pad2(i + 1);
+      const bar = root.querySelector('.gauge-bar');
+      for (let s = 0; s < SEGMENTS; s++) bar.appendChild(document.createElement('span')).className = 'seg';
+      gaugesEl.appendChild(root);
+      return {
+        key: key, id: null, name: '', device: '', units: '', value: NaN, peak: 0, state: 'empty', warn: false,
+        els: { root: root, name: root.querySelector('.gauge-name'), num: root.querySelector('.num'), unit: root.querySelector('.gauge-unit'),
+               msg: root.querySelector('.gauge-msg'), segs: Array.prototype.slice.call(bar.children), device: root.querySelector('.gauge-device'), hi: root.querySelector('.hi') }
+      };
+    });
+
+    function unitKind(units) {
+      const u = String(units || '').trim();
+      if (u.indexOf('%') !== -1) return 'pct';
+      if (/^(°|deg)?\s*F$/i.test(u)) return 'tempF';
+      if (/^(°|deg)?\s*C$/i.test(u)) return 'tempC';
+      if (/rpm/i.test(u)) return 'rpm';
+      return 'other';
+    }
+    function niceCeil(v) {
+      if (v <= 0) return 1;
+      const mag = Math.pow(10, Math.floor(Math.log10(v)));
+      const n = v / mag;
+      return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+    }
+    function scaleFor(slot) {
+      const kind = unitKind(slot.units);
+      const warnC = clampRange(getIcueProperty('warnTemp'), 50, 110, 85);
+      if (kind === 'pct') return { max: 100, warnAt: 95, hotAt: 80 };
+      if (kind === 'tempC') return { max: 100, warnAt: warnC, hotAt: warnC - 10 };
+      if (kind === 'tempF') { const w = warnC * 9 / 5 + 32; return { max: 212, warnAt: w, hotAt: w - 18 }; }
+      if (kind === 'rpm') return { max: Math.max(2000, Math.ceil(slot.peak * 1.15 / 500) * 500), warnAt: Infinity, hotAt: Infinity };
+      return { max: niceCeil(Math.max(slot.peak * 1.2, 1)), warnAt: Infinity, hotAt: Infinity };
+    }
+    function formatValue(slot) {
+      const v = slot.value;
+      if (!Number.isFinite(v)) return '--';
+      const kind = unitKind(slot.units);
+      if (kind === 'other' && Math.abs(v) < 10) return v.toFixed(1);
+      return String(Math.round(v));
+    }
+    function displayUnit(units) {
+      const kind = unitKind(units);
+      if (kind === 'tempC') return '°C';
+      if (kind === 'tempF') return '°F';
+      return String(units || '');
+    }
+
+    function renderSlot(slot) {
+      const e = slot.els;
+      const offline = slot.state !== 'ok';
+      e.root.classList.toggle('is-offline', offline);
+      if (offline) {
+        e.name.textContent = slot.state === 'empty' ? S['NO SENSOR'] : (slot.name || S['NO SIGNAL']);
+        e.num.textContent = '--';
+        e.msg.textContent = slot.state === 'empty' ? S['Pick a sensor in widget settings']
+          : slot.state === 'loading' ? '' : S['Sensor offline'];
+        e.segs.forEach(function (s) { s.classList.remove('on'); });
+        e.root.classList.remove('is-warn', 'is-hot');
+        slot.warn = false;
+        return;
+      }
+      const sc = scaleFor(slot);
+      const v = slot.value;
+      e.name.textContent = slot.name;
+      e.device.textContent = slot.device;
+      e.num.textContent = formatValue(slot);
+      e.unit.textContent = displayUnit(slot.units);
+      e.hi.textContent = String(Math.round(sc.max));
+      const lit = Number.isFinite(v) ? Math.round(Math.max(0, Math.min(1, v / sc.max)) * SEGMENTS) : 0;
+      e.segs.forEach(function (s, i) { s.classList.toggle('on', i < lit); });
+      const warn = Number.isFinite(v) && v >= sc.warnAt;
+      e.root.classList.toggle('is-warn', warn);
+      e.root.classList.toggle('is-hot', !warn && Number.isFinite(v) && v >= sc.hotAt);
+      if (warn && !slot.warn) glitch(e.num);
+      slot.warn = warn;
+    }
+
+    function setSlotValue(slot, raw) {
+      const v = parseFloat(raw);
+      slot.value = v;
+      if (Number.isFinite(v)) slot.peak = Math.max(slot.peak, v);
+      renderSlot(slot);
+    }
+
+    let sensorPlugin = null;
+    let sensorRequest = null;
+
+    async function bindSlot(slot) {
+      const id = String(getIcueProperty(slot.key) || '');
+      if (id === slot.id) return;
+      slot.id = id;
+      slot.value = NaN; slot.peak = 0; slot.name = ''; slot.device = ''; slot.units = '';
+      if (!id) { slot.state = 'empty'; renderSlot(slot); return; }
+      slot.state = 'loading';
+      renderSlot(slot);
+      if (!sensorRequest) return;
+      try {
+        const res = await Promise.all([
+          sensorRequest('getSensorName', id),
+          sensorRequest('getSensorDeviceName', id).catch(function () { return ''; }),
+          sensorRequest('getSensorUnits', id),
+          sensorRequest('getSensorValue', id)
+        ]);
+        if (slot.id !== id) return;  // setting changed while we were waiting
+        slot.name = String(res[0] || id);
+        slot.device = String(res[1] || '');
+        slot.units = String(res[2] || '');
+        slot.state = 'ok';
+        setSlotValue(slot, res[3]);
+      } catch (e) {
+        if (slot.id !== id) return;
+        console.warn('Sensor unavailable', id, e);
+        slot.state = 'offline';
+        renderSlot(slot);
+      }
+    }
+
+    function pollSensors() {
+      if (!sensorRequest) return;
+      slots.forEach(function (slot) {
+        if (!slot.id) return;
+        if (slot.state !== 'ok') { const id = slot.id; slot.id = null; bindSlot(slot); return; }
+        const id = slot.id;
+        sensorRequest('getSensorValue', id).then(function (v) { if (slot.id === id) setSlotValue(slot, v); }).catch(function () {});
+      });
+    }
+
+    function initSensors() {
+      if (sensorPlugin || demoMode) return;
+      const p = plugin('Sensorsdataprovider');
+      if (!p) return;
+      sensorPlugin = p;
+      sensorRequest = makeRequester(p);
+      p.sensorValueChanged.connect(function (id, value) {
+        slots.forEach(function (slot) { if (slot.id === id && slot.state === 'ok') setSlotValue(slot, value); });
+      });
+      if (p.sensorUnitsChanged) p.sensorUnitsChanged.connect(function (id, units) {
+        slots.forEach(function (slot) { if (slot.id === id) { slot.units = String(units || ''); slot.peak = 0; renderSlot(slot); } });
+      });
+      if (p.sensorRemoved) p.sensorRemoved.connect(function (id) {
+        slots.forEach(function (slot) { if (slot.id === id) { slot.state = 'offline'; renderSlot(slot); } });
+      });
+      if (p.sensorAdded) p.sensorAdded.connect(function (id) {
+        slots.forEach(function (slot) { if (slot.id === id && slot.state !== 'ok') { slot.id = null; bindSlot(slot); } });
+      });
+      slots.forEach(function (slot) { slot.id = null; bindSlot(slot); });
+      setInterval(pollSensors, 5000);  // fallback in case value signals are sparse
+    }
+
+    // ---- FPS ----------------------------------------------------------------
+    const FPS_HISTORY = 60;
+    const fpsHistory = [];
+    const fps = { ready: false, available: false, value: 0, process: '' };
+    function renderFps() {
+      const has = fps.ready && fps.available;
+      document.getElementById('fps-body').classList.toggle('no-data', !has);
+      document.getElementById('fps-num').textContent = has ? String(Math.round(fps.value)) : '--';
+      document.getElementById('fps-proc').textContent = fps.process || (fps.ready ? '--' : S['NO SIGNAL']);
+    }
+    function renderFpsGraph() {
+      const vals = fpsHistory.filter(function (v) { return v !== null; });
+      const top = niceCeil(Math.max(60, Math.max.apply(null, vals.concat([0])) * 1.1));
+      let line = '';
+      let area = '';
+      let runStart = -1;
+      const offset = FPS_HISTORY - fpsHistory.length;
+      for (let i = 0; i < fpsHistory.length; i++) {
+        const v = fpsHistory[i];
+        const x = offset + i;
+        if (v === null) {
+          if (runStart >= 0) area += 'L' + (x - 1) + ' 100Z';
+          runStart = -1;
+          continue;
+        }
+        const y = (100 - Math.min(1, v / top) * 96).toFixed(1);
+        if (runStart < 0) { line += 'M' + x + ' ' + y; area += 'M' + x + ' 100L' + x + ' ' + y; runStart = x; }
+        else { line += 'L' + x + ' ' + y; area += 'L' + x + ' ' + y; }
+      }
+      if (runStart >= 0) area += 'L' + (offset + fpsHistory.length - 1) + ' 100Z';
+      document.getElementById('fps-line').setAttribute('d', line);
+      document.getElementById('fps-area').setAttribute('d', area);
+    }
+    function sampleFps() {
+      fpsHistory.push(fps.ready && fps.available ? fps.value : null);
+      if (fpsHistory.length > FPS_HISTORY) fpsHistory.shift();
+      renderFpsGraph();
+    }
+    function initFps() {
+      if (fps.ready || demoMode) return;
+      const p = plugin('Fpsdataprovider');
+      if (!p) return;
+      fps.ready = true;
+      const request = makeRequester(p);
+      if (p.fpsUpdated) p.fpsUpdated.connect(function (v) { fps.value = Number(v) || 0; renderFps(); });
+      if (p.fpsAvailabilityChanged) p.fpsAvailabilityChanged.connect(function (a) { fps.available = Boolean(a); renderFps(); });
+      if (p.processChanged) p.processChanged.connect(function (name) { const changed = String(name || '') !== fps.process; fps.process = String(name || ''); renderFps(); if (changed) glitch(document.getElementById('fps-proc')); });
+      Promise.all([
+        request('getFpsAvailable').catch(function () { return false; }),
+        request('getCurrentFps').catch(function () { return 0; }),
+        request('getCurrentProcess').catch(function () { return ''; })
+      ]).then(function (r) { fps.available = Boolean(r[0]); fps.value = Number(r[1]) || 0; fps.process = String(r[2] || ''); renderFps(); });
+      renderFps();
+    }
+
+    // ---- Music --------------------------------------------------------------
+    const music = { ready: false, title: '', artist: '', album: '', art: '', playing: false };
+    const musicEls = {
+      root: document.getElementById('music'), art: document.getElementById('art'), status: document.getElementById('track-status'),
+      title: document.getElementById('track-title'), artist: document.getElementById('track-artist'), album: document.getElementById('track-album')
+    };
+    let shownArt = null;
+    function renderMedia() {
+      const has = Boolean(music.title);
+      musicEls.root.classList.toggle('no-media', !has);
+      musicEls.root.classList.toggle('is-playing', has && music.playing);
+      musicEls.status.textContent = !has ? S['STANDBY'] : (music.playing ? S['PLAYING'] : S['PAUSED']);
+      musicEls.title.textContent = has ? music.title : S['NO SIGNAL'];
+      musicEls.artist.textContent = has ? music.artist : S['Start playback in any media app'];
+      musicEls.album.textContent = has ? music.album : '';
+      const art = has && /^data:image\/(png|jpeg|jpg|webp);base64,/i.test(music.art) ? music.art : '';
+      if (art !== shownArt) {
+        shownArt = art;
+        musicEls.art.replaceChildren();
+        if (art) {
+          const img = document.createElement('img');
+          img.alt = '';
+          img.src = art;
+          img.onerror = function () { img.remove(); };
+          musicEls.art.appendChild(img);
+        }
+      }
+    }
+    function updateMusic(next) {
+      const trackChanged = next.title !== undefined && next.title !== music.title;
+      Object.keys(next).forEach(function (k) { if (next[k] !== undefined) music[k] = next[k]; });
+      renderMedia();
+      if (trackChanged && music.title) glitch(musicEls.title);
+    }
+    function readMediaProps(p) {
+      return {
+        title: typeof p.songName === 'string' ? p.songName : undefined,
+        artist: typeof p.artist === 'string' ? p.artist : undefined,
+        album: typeof p.album === 'string' ? p.album : undefined,
+        art: typeof p.thumbnail === 'string' ? p.thumbnail : undefined,
+        playing: typeof p.isPlaying === 'boolean' ? p.isPlaying : undefined
+      };
+    }
+    function initMedia() {
+      if (music.ready || demoMode) return;
+      const p = plugin('Mediadataprovider');
+      if (!p) return;
+      music.ready = true;
+      const request = makeRequester(p);
+      const fromProps = function () { updateMusic(readMediaProps(p)); };
+      ['songNameChanged', 'artistChanged', 'albumChanged', 'thumbnailChanged', 'isPlayingChanged'].forEach(function (sig) {
+        if (p[sig] && p[sig].connect) p[sig].connect(fromProps);
+      });
+      fromProps();
+      Promise.all([
+        request('getSongName'), request('getArtist'), request('getAlbum'), request('getThumbnail'), request('getIsPlaying')
+      ]).then(function (r) {
+        updateMusic({ title: String(r[0] || ''), artist: String(r[1] || ''), album: String(r[2] || ''), art: String(r[3] || ''), playing: Boolean(r[4]) });
+      }).catch(function (e) { console.warn('Media info unavailable', e); });
+    }
+    function mediaAction(method) {
+      if (demoMode) { demoMediaAction(method); return; }
+      const p = plugin('Mediadataprovider');
+      if (!p || typeof p[method] !== 'function') return;
+      try { p[method](); } catch (e) { console.warn('Media control failed', e); }
+      if (method === 'triggerPlayPause' && music.title) updateMusic({ playing: !music.playing });  // optimistic; the signal confirms
+    }
+    document.getElementById('btn-prev').addEventListener('click', function () { mediaAction('triggerPreviousTrack'); });
+    document.getElementById('btn-play').addEventListener('click', function () { mediaAction('triggerPlayPause'); });
+    document.getElementById('btn-next').addEventListener('click', function () { mediaAction('triggerNextTrack'); });
+
+    // ---- Demo mode (plain browser only, never inside iCUE) ------------------
+    let demoMode = false;
+    const demoTracks = [
+      { title: 'Neon Rain Protocol', artist: 'Chrome Saints', album: 'Afterhours Grid' },
+      { title: 'Low Orbit Lullaby', artist: 'Vanta Signal', album: 'Static Hearts' },
+      { title: 'Midnight Overclock', artist: 'Kilowatt Kids', album: 'Heatsink' }
+    ];
+    let demoTrack = 0;
+    function demoMediaAction(method) {
+      if (method === 'triggerPlayPause') { updateMusic({ playing: !music.playing }); return; }
+      demoTrack = (demoTrack + (method === 'triggerNextTrack' ? 1 : demoTracks.length - 1)) % demoTracks.length;
+      updateMusic(Object.assign({ playing: true }, demoTracks[demoTrack]));
+    }
+    function startDemo() {
+      demoMode = true;
+      const tag = document.getElementById('demo-slot');
+      tag.textContent = S['DEMO DATA'];
+      tag.className = 'demo-tag';
+      const defs = [
+        { name: 'CPU Package', device: 'Demo CPU', units: '°C', base: 62, swing: 8 },
+        { name: 'GPU Temperature', device: 'Demo GPU', units: '°C', base: 71, swing: 6 },
+        { name: 'CPU Load', device: 'Demo CPU', units: '%', base: 38, swing: 25 },
+        { name: 'GPU Load', device: 'Demo GPU', units: '%', base: 88, swing: 9 }
+      ];
+      slots.forEach(function (slot, i) { Object.assign(slot, defs[i], { id: 'demo' + i, state: 'ok', peak: 0 }); });
+      const tickSensors = function () {
+        slots.forEach(function (slot, i) {
+          const d = defs[i];
+          setSlotValue(slot, Math.max(0, Math.min(100, d.base + (Math.random() * 2 - 1) * d.swing)));
+        });
+      };
+      tickSensors();
+      setInterval(tickSensors, 1500);
+      fps.ready = true; fps.available = true; fps.process = 'demo-game.exe'; fps.value = 144;
+      setInterval(function () { fps.value = Math.round(130 + Math.random() * 30 - (Math.random() < 0.08 ? 50 : 0)); renderFps(); }, 1000);
+      for (let i = 0; i < 40; i++) fpsHistory.push(Math.round(130 + Math.random() * 30));
+      renderFps();
+      updateMusic(Object.assign({ playing: true, art: '' }, demoTracks[0]));
+      setNotifications(3);
+    }
+
+    // ---- Lifecycle ----------------------------------------------------------
+    let started = false;
+    function start() {
+      if (started) return;
+      started = true;
+      scheduleClock();
+      renderNotifications();
+      renderMedia();
+      renderFps();
+      slots.forEach(renderSlot);
+      setInterval(sampleFps, 1000);
+    }
+
+    function tryInitPlugins() {
+      if (pluginFlag('pluginSensorsdataprovider_initialized')) initSensors();
+      if (pluginFlag('pluginMediadataprovider_initialized')) initMedia();
+      if (pluginFlag('pluginFpsdataprovider_initialized')) initFps();
+      if (pluginFlag('pluginNotificationsprovider_initialized')) initNotifications();
+    }
+
+    function onIcueDataUpdated() {
+      applyStyles();
+      if (!started) return;
+      scheduleClock();
+      if (!demoMode) slots.forEach(function (slot) { bindSlot(slot); });
+      slots.forEach(renderSlot);  // warning threshold may have changed
+    }
+
+    let initialized = false;
+    function onIcueInitialized() {
+      if (initialized) return;
+      initialized = true;
+      applyStyles();
+      start();
+      tryInitPlugins();
+      loadTranslations();
+    }
+
+    var bootAttempts = 0, BOOT_RETRY_MS = 100, BOOT_RETRY_MAX = 15; // ~1.5s grace window
+    function bootCheck() {
+      tryInitPlugins();
+      if (insideIcue()) { onIcueInitialized(); return; }
+      if (bootAttempts < BOOT_RETRY_MAX) { bootAttempts++; setTimeout(bootCheck, BOOT_RETRY_MS); return; }
+      // Plain browser (development / preview outside iCUE): labeled demo data.
+      applyStyles();
+      start();
+      startDemo();
+    }
+    bootCheck();
+
+    // Plugins can finish initializing after iCUE does; keep checking for a while.
+    let lateChecks = 0;
+    const lateTimer = setInterval(function () {
+      if (demoMode || ++lateChecks > 30) { clearInterval(lateTimer); return; }
+      tryInitPlugins();
+    }, 1000);
+  </script>
+</body>
+</html>
