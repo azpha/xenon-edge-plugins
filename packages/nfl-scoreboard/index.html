@@ -13,12 +13,14 @@
   <meta name="x-icue-property" content="showLogos" data-label="tr('Show Team Logos')" data-type="switch" data-default="true" />
   <meta name="x-icue-property" content="teamColors" data-label="tr('Team Color Accents')" data-type="switch" data-default="true" />
 
-  <meta name="x-icue-property" content="textColor" data-label="tr('Text Color')" data-type="color" data-default="'#ffffff'" />
-  <meta name="x-icue-property" content="accentColor" data-label="tr('Accent Color')" data-type="color" data-default="'#ff3b30'" />
-  <meta name="x-icue-property" content="backgroundColor" data-label="tr('Background Color')" data-type="color" data-default="'#000000'" />
+  <meta name="x-icue-property" content="textColor" data-label="tr('Text Color')" data-type="color" data-default="'#ffe6e1'" />
+  <meta name="x-icue-property" content="accentColor" data-label="tr('Accent Color')" data-type="color" data-default="'#ff2a3f'" />
+  <meta name="x-icue-property" content="backgroundColor" data-label="tr('Background Color')" data-type="color" data-default="'#0c0305'" />
   <meta name="x-icue-property" content="backgroundMedia" data-label="tr('Background Image')" data-type="media-selector" data-filters="['*.png','*.jpg','*.jpeg','*.webp']" />
   <meta name="x-icue-property" content="glassBlur" data-label="tr('Glass Blur')" data-type="slider" data-default="0" data-min="0" data-max="30" data-step="1" />
   <meta name="x-icue-property" content="transparency" data-label="tr('Background Transparency')" data-type="slider" data-default="100" data-min="0" data-max="100" data-step="1" data-unit-label="'%'" />
+  <meta name="x-icue-property" content="secondaryColor" data-label="tr('Secondary Color')" data-type="color" data-default="'#ff6a5c'" />
+  <meta name="x-icue-property" content="scanlines" data-label="tr('Scanlines')" data-type="switch" data-default="true" />
 
   <script type="application/json" id="x-icue-groups">
   [
@@ -29,7 +31,7 @@
     },
     {
       "title": "tr('Widget Personalization')",
-      "properties": ["textColor", "accentColor", "backgroundColor", "backgroundMedia", "glassBlur", "transparency"]
+      "properties": ["textColor", "accentColor", "backgroundColor", "backgroundMedia", "glassBlur", "transparency", "secondaryColor", "scanlines"]
     }
   ]
   </script>
@@ -43,11 +45,14 @@
     .rotation-container img, .rotation-container video { display: block; object-fit: contain; }
 
     :root {
-      --text-color: #ffffff;
-      --accent-color: #ff3b30;
-      --bg-color: #000000;
+      --text-color: #ffe6e1;
+      --accent-color: #ff2a3f;
+      --cyan: #ff6a5c;          /* "secondary" color, same role as in Neon HUD */
+      --bg-color: #0c0305;
       --bg-opacity: 1;
       --bg-blur: 0px;
+      /* Status colors stay fixed so they read the same under any theme. */
+      --danger: #5ef2ff;
 
       /* Sizing baseline: every component size derives from this one unit. */
       --layout-unit: 1vmin;
@@ -56,25 +61,31 @@
       --cols: 2;
       --rows: 8;
 
-      --space-pad-y: calc(var(--layout-unit) * 3.6);
-      --space-pad-x: calc(var(--layout-unit) * 5);
-      --space-gap: calc(var(--layout-unit) * 1.2);
-      --space-col-gap: calc(var(--layout-unit) * 3);
+      --space-pad: calc(var(--layout-unit) * 2.2);
+      --space-frame: calc(var(--layout-unit) * 2.4);
+      --space-gap: calc(var(--layout-unit) * 1.1);
+      --space-col-gap: calc(var(--layout-unit) * 2.4);
       --space-inner: calc(var(--layout-unit) * 1.6);
-      --radius-row: calc(var(--layout-unit) * 1.6);
+      --cut: calc(var(--layout-unit) * 3.6);
+      --row-cut: calc(var(--layout-unit) * 1.6);
+      --border: max(2px, calc(var(--layout-unit) * 0.45));
 
-      --font-score: max(14px, calc(var(--layout-unit) * 5.2));
-      --font-team: max(12px, calc(var(--layout-unit) * 4.2));
-      --font-status: max(11px, calc(var(--layout-unit) * 3.5));
+      --font-score: max(14px, calc(var(--layout-unit) * 5.4));
+      --font-team: max(12px, calc(var(--layout-unit) * 4.4));
+      --font-status: max(11px, calc(var(--layout-unit) * 3.6));
       --font-sub: max(11px, calc(var(--layout-unit) * 2.8));
-      --font-label: max(11px, calc(var(--layout-unit) * 3.2));
+      --font-label: max(11px, calc(var(--layout-unit) * 3));
       --font-state-title: calc(var(--layout-unit) * 7);
       --font-state-body: max(12px, calc(var(--layout-unit) * 3.8));
 
       --logo-size: calc(var(--layout-unit) * 6.4);
-      --stripe-width: max(3px, calc(var(--layout-unit) * 0.9));
-      --dot-size: max(5px, calc(var(--layout-unit) * 1.4));
-      --header-height: calc(var(--layout-unit) * 7);
+      --stripe-width: max(3px, calc(var(--layout-unit) * 0.8));
+      --dot-size: max(6px, calc(var(--layout-unit) * 1.5));
+      --header-height: calc(var(--layout-unit) * 6);
+
+      --panel-fill: color-mix(in srgb, var(--bg-color) 95%, var(--cyan));
+      --panel-edge: color-mix(in srgb, var(--cyan) 45%, transparent);
+      --dim-cyan: color-mix(in srgb, var(--cyan) 10%, transparent);
     }
 
     /* Vertical Xeneon Edge slots keep Small-vertical proportions (canonical baseline). */
@@ -94,80 +105,80 @@
       padding: 0;
       width: 100vw;
       height: 100vh;
-      font-family: OpenSans, "Segoe UI", Arial, sans-serif;
+      font-family: Bahnschrift, "Segoe UI", Arial, sans-serif;
+      font-stretch: semi-condensed;
       background: transparent;
       -webkit-user-select: none;
       user-select: none;
     }
 
-    .widget-root {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      color: var(--text-color);
-      overflow: hidden;
-    }
+    .widget-root { position: relative; width: 100%; height: 100%; color: var(--text-color); overflow: hidden; }
+    .widget-background { position: absolute; inset: 0; z-index: 0; overflow: hidden; opacity: var(--bg-opacity); transition: opacity 0.2s ease; }
+    .main-glass { position: absolute; inset: 0; background-color: var(--bg-color); }
+    #media-background { width: 100%; height: 100%; position: relative; filter: blur(var(--bg-blur)); }
 
-    .widget-background {
+    .scanlines {
       position: absolute;
       inset: 0;
-      z-index: 0;
-      overflow: hidden;
-      opacity: var(--bg-opacity);
-      transition: opacity 0.2s ease;
+      z-index: 5;
+      pointer-events: none;
+      background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 4px);
     }
-    .main-glass {
-      position: absolute;
-      inset: 0;
-      background-color: var(--bg-color);
-    }
-    #media-background {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      filter: blur(var(--bg-blur));
-    }
+    .no-scanlines .scanlines { display: none; }
 
-    .main-content {
+    .main-content { position: relative; z-index: 2; height: 100%; padding: var(--space-pad); display: flex; }
+
+    /* Clipped-corner frame: edge color underneath, inset fill on top (same as Neon HUD). */
+    .panel {
       position: relative;
-      z-index: 2;
-      height: 100%;
-      padding: var(--space-pad-y) var(--space-pad-x);
+      isolation: isolate;
+      flex: 1 1 0;
+      min-width: 0;
       display: flex;
       flex-direction: column;
       gap: var(--space-gap);
+      padding: calc(var(--space-frame) * 0.8) var(--space-frame) var(--space-frame);
+      clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+      background: var(--panel-edge);
+    }
+    .panel::before {
+      content: "";
+      position: absolute;
+      inset: var(--border);
+      z-index: -1;
+      clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+      background: var(--panel-fill);
     }
 
-    /* Header strip */
+    /* Header strip, styled like Neon HUD panel tags */
     .topbar {
       flex: 0 0 var(--header-height);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 1em;
       font-size: var(--font-label);
-      letter-spacing: 0.08em;
+      font-weight: 700;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
       white-space: nowrap;
     }
-    .topbar-title { font-weight: 700; }
-    .topbar-title .week { opacity: 0.6; font-weight: 600; margin-left: 0.6em; }
-    .topbar-meta { display: flex; align-items: center; gap: 1.2em; opacity: 0.6; }
-    .topbar-meta .live-count { color: var(--accent-color); opacity: 1; font-weight: 700; display: flex; align-items: center; gap: 0.45em; }
-    .topbar-meta .live-count::before {
+    .topbar-title { display: flex; align-items: center; gap: 0.7em; color: var(--accent-color); }
+    .topbar-title::before {
       content: "";
-      width: var(--dot-size);
-      height: var(--dot-size);
-      border-radius: 50%;
+      width: 0.7em;
+      height: 0.7em;
       background: var(--accent-color);
+      clip-path: polygon(0 0, 100% 0, 0 100%);
     }
-    .topbar-meta .offline-tag {
-      color: var(--text-color);
-      border: 1px solid currentColor;
-      border-radius: calc(var(--layout-unit) * 0.8);
-      padding: 0.1em 0.5em;
-      font-weight: 700;
-    }
-    .topbar-meta-group { display: flex; align-items: center; gap: 1.2em; }
+    .topbar-title .week { color: var(--cyan); opacity: 0.75; }
+    .topbar-title .week::before { content: "// "; opacity: 0.6; }
+    .topbar-meta { display: flex; align-items: center; gap: 1.2em; }
+    .topbar-meta .live-count { color: var(--accent-color); display: flex; align-items: center; gap: 0.5em; }
+    .topbar-meta .live-count::before { content: ""; width: var(--dot-size); height: var(--dot-size); background: var(--accent-color); transform: rotate(45deg); }
+    .topbar-meta .offline-tag { color: var(--bg-color); background: var(--danger); padding: 0.15em 0.6em; letter-spacing: 0.12em; }
+    .topbar-meta-group { display: flex; align-items: center; gap: 1.2em; color: var(--cyan); letter-spacing: 0.12em; }
+    .topbar-meta-group #updated-label { opacity: 0.7; }
 
     /* Game grid: every game visible at once, rows share the height evenly. */
     .games {
@@ -190,63 +201,36 @@
       align-items: center;
       gap: var(--space-inner);
       padding: 0 var(--space-inner);
-      border-radius: var(--radius-row);
-      background: rgba(255, 255, 255, 0.06);
+      clip-path: polygon(0 0, calc(100% - var(--row-cut)) 0, 100% var(--row-cut), 100% 100%, var(--row-cut) 100%, 0 calc(100% - var(--row-cut)));
+      background: var(--dim-cyan);
       cursor: pointer;
       transition: background-color 0.15s ease, transform 0.1s ease;
+      -webkit-tap-highlight-color: transparent;
     }
-    .game:active { background: rgba(255, 255, 255, 0.16); transform: scale(0.985); }
+    .game:active { background: color-mix(in srgb, var(--cyan) 30%, transparent); transform: scale(0.985); }
     .game.is-in {
-      background: color-mix(in srgb, var(--accent-color) 14%, transparent);
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-color) 55%, transparent);
+      background: color-mix(in srgb, var(--accent-color) 20%, transparent);
+      box-shadow: inset var(--border) 0 0 var(--accent-color);
     }
 
-    .side {
-      flex: 1 1 0;
-      min-width: 0;
-      align-self: stretch;
-      display: flex;
-      align-items: center;
-      gap: var(--space-inner);
-    }
+    .side { flex: 1 1 0; min-width: 0; align-self: stretch; display: flex; align-items: center; gap: var(--space-inner); }
     .side.home { flex-direction: row-reverse; }
 
     .stripe {
       flex: 0 0 var(--stripe-width);
-      height: 62%;
-      border-radius: var(--stripe-width);
+      height: 56%;
+      transform: skewX(-18deg);
       background: var(--team-color, transparent);
     }
     .no-team-colors .stripe { display: none; }
 
-    .logo {
-      flex: 0 0 auto;
-      height: min(var(--logo-size), 80%);
-      width: auto;
-      aspect-ratio: 1 / 1;
-      object-fit: contain;
-    }
+    .logo { flex: 0 0 auto; height: min(var(--logo-size), 80%); width: auto; aspect-ratio: 1 / 1; object-fit: contain; }
     .no-logos .logo { display: none; }
 
-    .abbr {
-      font-size: var(--font-team);
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      white-space: nowrap;
-      display: flex;
-      align-items: center;
-      gap: 0.3em;
-    }
-    .poss {
-      width: var(--dot-size);
-      height: var(--dot-size);
-      border-radius: 50%;
-      background: var(--text-color);
-      opacity: 0.85;
-      visibility: hidden;
-    }
+    .abbr { font-size: var(--font-team); font-weight: 700; letter-spacing: 0.06em; white-space: nowrap; display: flex; align-items: center; gap: 0.35em; }
+    .poss { width: var(--dot-size); height: var(--dot-size); background: var(--cyan); transform: rotate(45deg); visibility: hidden; }
     .poss.has-ball { visibility: visible; }
-    .poss.red-zone { background: var(--accent-color); opacity: 1; }
+    .poss.red-zone { background: var(--danger); box-shadow: 0 0 calc(var(--layout-unit) * 1.2) var(--danger); }
 
     .score {
       margin-left: auto;
@@ -258,7 +242,7 @@
     }
     .side.home .score { margin-left: 0; margin-right: auto; }
 
-    .side.is-loser { opacity: 0.55; }
+    .side.is-loser { opacity: 0.45; }
     .is-pre .score { display: none; }
 
     .status {
@@ -273,11 +257,12 @@
       text-align: center;
       white-space: nowrap;
       font-size: var(--font-status);
+      letter-spacing: 0.06em;
     }
-    .status .main { font-weight: 700; font-variant-numeric: tabular-nums; opacity: 0.85; }
-    .status .sub { font-size: var(--font-sub); opacity: 0.6; }
-    .is-in .status .main { color: var(--accent-color); opacity: 1; }
-    .is-post .status .main { opacity: 0.6; }
+    .status .main { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--cyan); }
+    .status .sub { font-size: var(--font-sub); opacity: 0.65; }
+    .is-in .status .main { color: var(--accent-color); }
+    .is-post .status .main { color: var(--text-color); opacity: 0.5; }
     .games[data-dense="true"] .status .sub { display: none; }
 
     /* Full-panel states */
@@ -291,17 +276,28 @@
       gap: calc(var(--layout-unit) * 2);
       padding: 0 calc(var(--layout-unit) * 8);
     }
-    .panel-state .title { font-size: var(--font-state-title); font-weight: 700; }
+    .panel-state .title { font-size: var(--font-state-title); font-weight: 700; color: var(--accent-color); letter-spacing: 0.06em; text-transform: uppercase; }
     .panel-state .body { font-size: var(--font-state-body); opacity: 0.7; max-width: 46em; line-height: 1.35; }
     .spinner {
-      width: calc(var(--layout-unit) * 7);
-      height: calc(var(--layout-unit) * 7);
-      border-radius: 50%;
-      border: calc(var(--layout-unit) * 0.8) solid rgba(255, 255, 255, 0.15);
+      width: calc(var(--layout-unit) * 6);
+      height: calc(var(--layout-unit) * 6);
+      border: var(--border) solid var(--dim-cyan);
       border-top-color: var(--accent-color);
-      animation: spin 0.9s linear infinite;
+      border-right-color: var(--accent-color);
+      animation: spin 1.1s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Glitch (one-shot, when a score changes) */
+    @keyframes glitch {
+      0%   { clip-path: inset(0 0 0 0); transform: translate(0); text-shadow: none; }
+      15%  { clip-path: inset(12% 0 58% 0); transform: translate(-0.06em, 0); text-shadow: 0.05em 0 var(--danger), -0.05em 0 var(--cyan); }
+      30%  { clip-path: inset(55% 0 18% 0); transform: translate(0.06em, 0); }
+      45%  { clip-path: inset(30% 0 42% 0); transform: translate(-0.03em, 0); text-shadow: -0.04em 0 var(--danger), 0.04em 0 var(--cyan); }
+      60%  { clip-path: inset(0 0 0 0); transform: translate(0.02em, 0); }
+      100% { clip-path: inset(0 0 0 0); transform: translate(0); text-shadow: none; }
+    }
+    .glitch { animation: glitch 0.45s steps(1, end) 1; }
 
     [hidden] { display: none !important; }
 
@@ -320,29 +316,33 @@
     </div>
 
     <div class="main-content">
-      <div class="topbar" id="topbar" hidden>
-        <div class="topbar-title"><span>NFL</span><span class="week" id="week-label"></span></div>
-        <div class="topbar-meta">
-          <span class="live-count" id="live-count" hidden></span>
-          <span class="topbar-meta-group">
-            <span class="offline-tag" id="offline-tag" hidden>OFFLINE</span>
-            <span id="updated-label"></span>
-          </span>
+      <section class="panel" aria-label="NFL scores">
+        <div class="topbar" id="topbar" hidden>
+          <div class="topbar-title"><span>NFL</span><span class="week" id="week-label"></span></div>
+          <div class="topbar-meta">
+            <span class="live-count" id="live-count" hidden></span>
+            <span class="topbar-meta-group">
+              <span class="offline-tag" id="offline-tag" hidden>OFFLINE</span>
+              <span id="updated-label"></span>
+            </span>
+          </div>
         </div>
-      </div>
 
-      <div class="panel-state" id="state-loading" role="status">
-        <div class="spinner" aria-hidden="true"></div>
-        <div class="body" id="loading-text">Loading scores...</div>
-      </div>
+        <div class="panel-state" id="state-loading" role="status">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="body" id="loading-text">Loading scores...</div>
+        </div>
 
-      <div class="panel-state" id="state-message" role="status" hidden>
-        <div class="title" id="message-title"></div>
-        <div class="body" id="message-body"></div>
-      </div>
+        <div class="panel-state" id="state-message" role="status" hidden>
+          <div class="title" id="message-title"></div>
+          <div class="body" id="message-body"></div>
+        </div>
 
-      <div class="games" id="games" role="list" hidden></div>
+        <div class="games" id="games" role="list" hidden></div>
+      </section>
     </div>
+
+    <div class="scanlines" aria-hidden="true"></div>
   </div>
 
   <script>
@@ -574,9 +574,10 @@
     function applyStyles() {
       const root = document.documentElement;
       root.style.setProperty('--bg-opacity', clampRange(getIcueProperty('transparency'), 0, 100, 100) / 100);
-      root.style.setProperty('--text-color', colorProp('textColor', '#ffffff'));
-      root.style.setProperty('--accent-color', colorProp('accentColor', '#ff3b30'));
-      root.style.setProperty('--bg-color', colorProp('backgroundColor', '#000000'));
+      root.style.setProperty('--text-color', colorProp('textColor', '#ffe6e1'));
+      root.style.setProperty('--accent-color', colorProp('accentColor', '#ff2a3f'));
+      root.style.setProperty('--bg-color', colorProp('backgroundColor', '#0c0305'));
+      root.style.setProperty('--cyan', colorProp('secondaryColor', '#ff6a5c'));
       root.style.setProperty('--bg-blur', clampRange(getIcueProperty('glassBlur'), 0, 30, 0) + 'px');
 
       const mediaConfig = normalizeMediaConfig(getIcueProperty('backgroundMedia'));
@@ -587,6 +588,7 @@
       const widgetRoot = document.getElementById('root');
       widgetRoot.classList.toggle('no-logos', !s.showLogos);
       widgetRoot.classList.toggle('no-team-colors', !s.teamColors);
+      widgetRoot.classList.toggle('no-scanlines', !boolProp('scanlines', true));
     }
 
     // ---- Local cache (last known scores, per widget instance) -----------------
@@ -786,6 +788,8 @@
     let board = null;       // last good scoreboard (from network or cache)
     let stale = false;      // true when the last refresh failed
     let hasTried = false;   // at least one network attempt finished
+    let prevScores = null;  // "gameId:side" -> score at the previous render, for the change glitch
+    let nextScores = {};
 
     function el(tag, className, text) {
       const node = document.createElement(tag);
@@ -823,7 +827,12 @@
       else { abbr.appendChild(poss); abbr.appendChild(label); }
       side.appendChild(abbr);
 
-      side.appendChild(el('span', 'score', team.score));
+      const score = el('span', 'score', team.score);
+      const key = g.id + ':' + (isHome ? 'home' : 'away');
+      nextScores[key] = team.score;
+      // One-shot glitch when a score changes between refreshes (never on first paint).
+      if (prevScores && g.state !== 'pre' && key in prevScores && prevScores[key] !== team.score) score.classList.add('glitch');
+      side.appendChild(score);
       return side;
     }
 
@@ -913,7 +922,9 @@
       }
 
       const frag = document.createDocumentFragment();
+      nextScores = {};
       visible.forEach(function (g) { frag.appendChild(buildRow(g)); });
+      prevScores = Object.assign(prevScores || {}, nextScores);
       els.games.replaceChildren(frag);
       showPanel('games');
       layoutGrid();

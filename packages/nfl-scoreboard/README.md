@@ -8,6 +8,11 @@ scores, quarter and clock, possession, and finals. Tap a game to open it on ESPN
 - **Requires:** iCUE 5.52+ (Widget API 1.9.0), Windows.
 - **Plugin:** Link Provider (`widgetbuilder.linkprovider:Url:1.0`) for tap-to-open.
 
+## Look
+
+Same red cyberpunk theme as Neon HUD: clipped-corner frame and rows, Bahnschrift type, scanlines, and a one-shot
+glitch when a score changes. A red-zone possession marker glows cyan (`#5ef2ff`, fixed so it reads under any theme).
+
 ## Settings
 
 | Setting | Type | Default | What it does |
@@ -17,8 +22,10 @@ scores, quarter and clock, possession, and finals. Tap a game to open it on ESPN
 | Show Finished Games | switch | on | Include final scores |
 | Show Team Logos | switch | on | Team logos from ESPN's CDN |
 | Team Color Accents | switch | on | Thin team-color stripe beside each team |
-| Text Color / Accent Color / Background Color | color | white / `#ff3b30` / black | Accent drives the LIVE badge, live clock and red-zone dot |
+| Text Color / Accent Color / Background Color | color | `#ffe6e1` / `#ff2a3f` / `#0c0305` | Accent drives the header tag, LIVE count, live rows and live clock |
 | Background Image, Glass Blur, Background Transparency | media / sliders | none / 0 / 100% | Standard personalization |
+| Secondary Color | color | `#ff6a5c` | Frame, row tint, kickoff times, possession marker |
+| Scanlines | switch | on | Static scanline overlay |
 
 ## States
 

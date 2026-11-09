@@ -34,7 +34,9 @@
       "OT": "OT",
       "PPD": "PPD",
       "CANC": "CANC",
-      "DELAY": "DELAY"
+      "DELAY": "DELAY",
+      "Secondary Color": "Secondary Color",
+      "Scanlines": "Scanlines"
     }
   }
 }
